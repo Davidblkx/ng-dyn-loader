@@ -1,7 +1,11 @@
 {
   "$schema": "./node_modules/ng-packagr/package.schema.json",
   "name": "ng-dyn-component-loader",
-  "version": "11.0.0",
+  "version": "11.0.1",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:Davidblkx/ng-dyn-loader.git"
+  },
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
