@@ -1,27 +1,130 @@
-# NgDynLoader
+# NgDynComponentLoader
 
-This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 11.0.3.
+Library to dynamically load angular components at runtime, it only supports angular since `IVY`
 
-## Development server
+## Why
 
-Run `ng serve` for a dev server. Navigate to `http://localhost:4200/`. The app will automatically reload if you change any of the source files.
+I had to it multiple time for projects in different clients, so decided to spent a weekend creating a open source solution to save me some time in future and was also an opportunity to try the new component lazy load (spoiler: its really easy to use)
 
-## Code scaffolding
+## Install
 
-Run `ng generate component component-name` to generate a new component. You can also use `ng generate directive|pipe|service|class|guard|interface|enum|module`.
+`npm install ng-dyn-component-loader`
+or
+`yarn add ng-dyn-component-loader`
 
-## Build
+## Quick-start
 
-Run `ng build` to build the project. The build artifacts will be stored in the `dist/` directory. Use the `--prod` flag for a production build.
+1 - Import `NgDynComponentLoaderModule` in your app module
 
-## Running unit tests
+```Typescript
+import { NgDynComponentLoaderModule } from 'ng-dyn-component-loader';
+import { BrowserModule } from '@angular/platform-browser';
 
-Run `ng test` to execute the unit tests via [Karma](https://karma-runner.github.io).
+import { AppRoutingModule } from './app-routing.module';
+import { AppComponent } from './app.component';
 
-## Running end-to-end tests
+@NgModule({
+  declarations: [
+    AppComponent,
+    NgDynComponentLoaderModule,
+  ],
+  imports: [
+    BrowserModule,
+    AppRoutingModule
+  ],
+  providers: [],
+  bootstrap: [AppComponent]
+})
+export class AppModule { }
+```
 
-Run `ng e2e` to execute the end-to-end tests via [Protractor](http://www.protractortest.org/).
+2 - Declare one or multiple hosts to render the components
 
-## Further help
+```Html
+<ng-template ngComponentHost></ng-template>
+<ng-template ngComponentHost hostName="otherHost" ></ng-template>
+```
 
-To get more help on the Angular CLI use `ng help` or go check out the [Angular CLI Overview and Command Reference](https://angular.io/cli) page.
+3 - Use `NgDynComponentHostService` to load components
+
+```Typescript
+import { NgDynComponentLoaderService } from 'ng-dyn-component-loader';
+
+...
+
+constructor(private readonly _loader: NgDynComponentLoaderService) {}
+
+public loadComponentInDefaultHost() {
+  this._loader.load(ComponentToRender).subscribe(c => {
+    // Do something with component instance
+  })
+}
+
+public loadComponentInOtherHost() {
+  this._loader.load(ComponentToRender, undefined, 'otherHost').subscribe(c => {
+    // Do something with component instance
+  })
+}
+```
+___
+
+## Inject data when loading a component
+
+Sometimes is handy to inject some data in a component when instantiating it, we could just create a specific function for each component or use a service, but I needed to do this enough times to decided to add a default way to do it.
+
+1 - In you component extend `BaseDynamicComponent<T>` with `T` being the type of data, to access the data just call `initData`.
+
+```Typescript
+@Component({ template: `<p>{{message}}</p>` })
+export class MessageComponent extends BaseDynamicComponent<{ message: string }> {
+  public get message(): string {
+    return this.initData?.message ?? 'no message';
+  }
+}
+```
+
+2 - During load, pass the data
+
+```Typescript
+import { NgDynComponentLoaderService } from 'ng-dyn-component-loader';
+
+...
+
+constructor(private readonly _loader: NgDynComponentLoaderService) {}
+
+public showMessage() {
+  this._loader.load(MessageComponent, { message: 'Hello World' }).subscribe(c => {
+    // Do something with component instance
+  })
+}
+```
+___
+###  Lazy load components
+
+1 - Create a component but don't add it to any module
+
+```Typescript
+import { Component } from '@angular/core';
+
+@Component({ template: `<div>lazy load component</div>` })
+export class LazyLoadComponent { }
+```
+
+2 - Load it using the `createComponentManifest` helper
+
+```Typescript
+import { createComponentManifest, NgDynComponentLoaderService } from 'ng-dyn-component-loader';
+
+...
+
+constructor(private readonly _loader: NgDynComponentLoaderService) {}
+
+public lazyLoadComponent() {
+  const manifest = createComponentManifest(
+    () => import('./lazy-load.component'),
+    e => e.LazyLoadComponent
+  );
+
+  this._loader.load(manifest).subscribe();
+}
+```
